@@ -58,6 +58,8 @@ fn main() {
     let path = "capabilities/default.json";
     let json = serde_json::to_string_pretty(&capability).unwrap();
     if fs::read_to_string(path).ok().as_deref() != Some(json.as_str()) {
+        // The file is not committed, so a fresh checkout has no folder for it either.
+        fs::create_dir_all("capabilities").unwrap();
         fs::write(path, json).unwrap();
     }
     tauri_build::try_build(
