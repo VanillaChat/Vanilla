@@ -70,7 +70,7 @@ jobs:
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: Vanilla Desktop ${{ github.ref_name }}
           releaseDraft: true
-          releaseBody: Desktop builds of Vanilla.
+          releaseBody: First version
 
       - uses: actions/upload-artifact@v4
         with:
