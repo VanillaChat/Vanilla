@@ -1,0 +1,13 @@
+[workspace]
+resolver = "3"
+members = ["apps/backend", "crates/voice", "tools/devtui"]
+
+# Profiles only apply from the workspace root, so the voice codec's tuned
+# release settings live here as a dedicated profile used by the WASM build
+# instead of changing panic behaviour for the backend.
+[profile.wasm]
+inherits = "release"
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

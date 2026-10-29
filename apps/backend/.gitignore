@@ -1,0 +1,6 @@
+/target
+.env
+.idea
+/generated
+cdn/*
+!cdn/embed

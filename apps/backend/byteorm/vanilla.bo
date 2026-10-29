@@ -1,0 +1,239 @@
+enum UserStatus {
+    ONLINE
+    DND
+    IDLE
+    LOOKING_TO_PLAY
+    UNAVAILABLE
+}
+
+enum Theme {
+    LIGHT
+    DARK
+    DIM
+}
+
+enum DmPrivacy {
+    EVERYONE
+    SHARED_SERVERS
+    FRIENDS
+}
+
+enum FriendStatus {
+    PENDING
+    ACCEPTED
+}
+
+enum MessageType {
+    DEFAULT
+    USER_JOIN
+    USER_LEAVE
+    REPLY
+}
+
+model Users {
+    id          Text        PrimaryKey
+    username    Text        NotNull
+    tag         Text        NotNull
+    created_at  TimestamptZ NotNull     @default(now())
+    bot         Boolean     NotNull     @default(false)
+    status      UserStatus  NotNull     @default(ONLINE)
+    flags       Int         NotNull     @default(0)
+    bio         Text?
+    avatar      Text?
+    banner      Text?
+    custom_status       Text?
+    custom_emoji        Text?
+    custom_status_until TimestamptZ?
+    status_until        TimestamptZ?
+    badges      Int         NotNull     @default(0)
+}
+
+model InviteCodes {
+    id          Text        PrimaryKey
+    code        Text        Unique NotNull
+    created_by  Text        NotNull     ForeignKey(Users.id, onDelete: no action)
+    used_by     Text?
+    used        Boolean     @default(false)
+    created_at  TimestamptZ @default(now())
+}
+
+model Accounts {
+    id              Text        PrimaryKey
+    email           Text        Unique NotNull
+    password        Text        NotNull
+    user_id         Text        NotNull     ForeignKey(Users.id, onDelete: cascade)
+    email_verified  Boolean     NotNull     @default(false)
+    locale          Text        NotNull     @default('en_us')
+    token           Text        Unique NotNull
+    password_version Int        NotNull     @default(0)
+    invite_code     Text?       ForeignKey(InviteCodes.id, onDelete: no action)
+    settings_id     Text        Unique NotNull ForeignKey(AccountSettings.account_id, onDelete: no action)
+}
+
+model AccountSettings {
+    id                      Serial      PrimaryKey
+    account_id              Text        Unique
+    theme                   Theme       NotNull     @default(LIGHT)
+    compact_mode            Boolean     NotNull     @default(false)
+    compact_show_avatars    Boolean     NotNull     @default(true)
+    dm_privacy              DmPrivacy   NotNull     @default(SHARED_SERVERS)
+}
+
+model AccountDeleteSchedule {
+    id              Text        PrimaryKey  ForeignKey(Accounts.id, onDelete: cascade)
+    job_id          Text        NotNull
+    delete_messages Boolean     NotNull     @default(false)
+    delete_at       Text        NotNull     @default('')
+}
+
+model Guilds {
+    id          Text        PrimaryKey
+    name        Text        NotNull     @default('New Server')
+    brief       Text?
+    icon        Text?
+    created_at  TimestamptZ @default(now())
+    owner_id    Text        NotNull
+}
+
+model GuildEmojis {
+    id          Text        PrimaryKey
+    guild_id    Text        NotNull     ForeignKey(Guilds.id, onDelete: cascade)
+    name        Text        NotNull
+    creator_id  Text        NotNull
+    extension   Text        NotNull
+    animated    Boolean     NotNull     @default(false)
+    created_at  TimestamptZ @default(now())
+}
+
+model GuildRoles {
+    id          Text        PrimaryKey
+    guild_id    Text        NotNull     ForeignKey(Guilds.id, onDelete: cascade)
+    name        Text        NotNull
+    color       Int         NotNull     @default(0)
+    hoist       Boolean     NotNull     @default(false)
+    position    Int         NotNull     @default(0)
+    permissions Int         NotNull     @default(0)
+    created_at  TimestamptZ NotNull     @default(now())
+}
+
+model GuildAuditEntries {
+    id          Text        PrimaryKey
+    guild_id    Text        NotNull     ForeignKey(Guilds.id, onDelete: cascade)
+    actor_id    Text        NotNull
+    action      Text        NotNull
+    target_type Text?
+    target_id   Text?
+    target_name Text?
+    changes     Text?
+    created_at  TimestamptZ NotNull     @default(now())
+}
+
+model GuildMemberRoles {
+    id          Serial      PrimaryKey
+    guild_id    Text        NotNull     ForeignKey(Guilds.id, onDelete: cascade)
+    user_id     Text        NotNull     ForeignKey(Users.id, onDelete: cascade)
+    role_id     Text        NotNull     ForeignKey(GuildRoles.id, onDelete: cascade)
+}
+
+model GuildMembers {
+    id          Serial      PrimaryKey
+    guild_id    Text        NotNull     ForeignKey(Guilds.id, onDelete: cascade)
+    user_id     Text        NotNull     ForeignKey(Users.id, onDelete: cascade)
+    nickname    Text?
+    joined_at   TimestamptZ NotNull     @default(now())
+}
+
+enum ChannelType {
+    TEXT
+    VOICE
+}
+
+model Channels {
+    id                  Text        PrimaryKey
+    name                Text        NotNull     @default('General')
+    guild_id            Text        NotNull     ForeignKey(Guilds.id, onDelete: cascade)
+    created_at          TimestamptZ @default(now())
+    rate_limit_per_user Int         NotNull     @default(0)
+    channel_type        ChannelType NotNull     @default(TEXT)
+}
+
+model Messages {
+    id           Text        PrimaryKey
+    author_id    Text        NotNull     ForeignKey(Users.id, onDelete: no action)
+    channel_id   Text        NotNull     ForeignKey(Channels.id, onDelete: cascade)
+    guild_id     Text        NotNull     ForeignKey(Guilds.id, onDelete: cascade)
+    content      Text?
+    created_at   TimestamptZ @default(now())
+    updated_at   TimestamptZ?
+    message_type MessageType @default(DEFAULT)
+    nonce        Text        @default('0')
+    reference_id Text?                  ForeignKey(Messages.id, onDelete: no action)
+}
+
+model GuildInvites {
+    id          Text        PrimaryKey
+    guild_id    Text        NotNull     ForeignKey(Guilds.id, onDelete: cascade)
+    code        Text        Unique NotNull
+    uses        Int         NotNull     @default(0)
+    max_uses    Int         NotNull     @default(0)
+    creator_id  Text        NotNull     ForeignKey(Users.id, onDelete: no action)
+    channel_id  Text        NotNull     ForeignKey(Channels.id, onDelete: cascade)
+    vanity      Boolean     NotNull     @default(false)
+    created_at  TimestamptZ @default(now())
+}
+
+model DmChannels {
+    id              Text        PrimaryKey
+    name            Text?
+    owner_id        Text        NotNull
+    is_group        Boolean     NotNull     @default(false)
+    pair_key        Text?       Unique
+    created_at      TimestamptZ NotNull     @default(now())
+    last_message_at TimestamptZ NotNull     @default(now())
+}
+
+model DmParticipants {
+    id          Serial      PrimaryKey
+    channel_id  Text        NotNull     ForeignKey(DmChannels.id, onDelete: cascade)
+    user_id     Text        NotNull     ForeignKey(Users.id, onDelete: cascade)
+}
+
+model DmMessages {
+    id           Text        PrimaryKey
+    channel_id   Text        NotNull     ForeignKey(DmChannels.id, onDelete: cascade)
+    author_id    Text        NotNull     ForeignKey(Users.id, onDelete: cascade)
+    content      Text        NotNull
+    created_at   TimestamptZ NotNull     @default(now())
+    updated_at   TimestamptZ?
+    nonce        Text        NotNull     @default('0')
+    reference_id Text?
+}
+
+model Friendships {
+    id              Serial          PrimaryKey
+    pair_key        Text            NotNull     Unique
+    requester_id    Text            NotNull     ForeignKey(Users.id, onDelete: cascade)
+    addressee_id    Text            NotNull
+    status          FriendStatus    NotNull     @default(PENDING)
+    created_at      TimestamptZ     NotNull     @default(now())
+}
+
+model UserBlocks {
+    id          Serial      PrimaryKey
+    block_key   Text        NotNull     Unique
+    blocker_id  Text        NotNull     ForeignKey(Users.id, onDelete: cascade)
+    blocked_id  Text        NotNull
+    created_at  TimestamptZ NotNull     @default(now())
+}
+
+model Attachments {
+    id           Text        PrimaryKey
+    uploader_id  Text        NotNull     ForeignKey(Users.id, onDelete: cascade)
+    message_id   Text?
+    filename     Text        NotNull
+    content_type Text        NotNull
+    size         Int         NotNull
+    width        Int?
+    height       Int?
+    created_at   TimestamptZ NotNull     @default(now())
+}

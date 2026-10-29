@@ -1,0 +1,6508 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Vanilla API",
+    "description": "HTTP API of the Vanilla chat backend.\n\nAuthentication is a session cookie set by `/auth/login` and `/auth/register` (`token`, or `__Host-Token` in production). Real-time events are delivered over the WebSocket at `/gateway`; see `docs/gateway.md`.\n\nErrors are JSON with a stable `code`. Validation failures list one `{code, path}` per field.",
+    "license": {
+      "name": ""
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/admin/gateway-metrics": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Gateway metrics snapshot",
+        "description": "Local only: refused when the request did not come straight from this machine, or came through a proxy (forwarding headers present). Used by the monitor.",
+        "operationId": "gateway_metrics",
+        "responses": {
+          "200": {
+            "description": "Counters and recent events",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Not a local request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/invite-codes": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a registration invite code",
+        "description": "Admin only.",
+        "operationId": "create_invite_code",
+        "responses": {
+          "200": {
+            "description": "Created code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminInviteCode"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/admin/invite-codes/{id}": {
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete a registration invite code",
+        "description": "Admin only. Broadcasts INVITE_CODE_DELETE to admins.",
+        "operationId": "delete_invite_code",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Invite code id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/admin/users/{id}/badges/{badge}": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Give a user a badge",
+        "description": "Admin only. Badges: early_adopter, contributor, supporter, bug_hunter. `staff` follows the admin flag. Broadcasts USER_UPDATE.",
+        "operationId": "grant_badge",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "User id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "badge",
+            "in": "path",
+            "description": "Badge id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The user with the badge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown user or badge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Take a badge from a user",
+        "description": "Admin only. Idempotent. Broadcasts USER_UPDATE.",
+        "operationId": "revoke_badge",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "User id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "badge",
+            "in": "path",
+            "description": "Badge id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The user without the badge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown user or badge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/attachments": {
+      "post": {
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Upload a file",
+        "description": "Multipart with one `file` field, up to MAX_ATTACHMENT_SIZE (25 MB by default). Pass the returned `id` in `attachmentIds` when sending a message within an hour, or the upload is discarded. At most 20 unclaimed uploads at a time, 30 uploads per minute.",
+        "operationId": "upload",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Stored file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or too large (attachments.errors.*)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/auth/clear-db": {
+      "delete": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Wipe users and accounts",
+        "description": "Development only. Fails with 500 in production.",
+        "operationId": "clear_db",
+        "responses": {
+          "204": {
+            "description": "Wiped"
+          },
+          "500": {
+            "description": "Production",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign in with email and password",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Signed in. The session token is set as a cookie."
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign out",
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "Cookie cleared"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Create an account",
+        "description": "Registration may require an invite code (REGISTRATION_CLOSED).",
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Account created and signed in."
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Current session",
+        "operationId": "session",
+        "responses": {
+          "200": {
+            "description": "The signed-in user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/cdn/attachments/{id}/{filename}": {
+      "get": {
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Download an attachment",
+        "description": "Public: anyone with the link can fetch it, the id is unguessable. Only PNG, JPEG, GIF and WebP are served inline; every other type is a forced download.",
+        "operationId": "download",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Attachment id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "description": "Original name, used for display only",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file"
+          },
+          "404": {
+            "description": "No such attachment"
+          }
+        }
+      }
+    },
+    "/cdn/{path}": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Serve an uploaded image",
+        "operationId": "serve_cdn",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path inside the CDN folder",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file"
+          },
+          "404": {
+            "description": "No such file"
+          }
+        }
+      }
+    },
+    "/channels/{id}": {
+      "delete": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Delete a channel",
+        "description": "Needs MANAGE_CHANNELS, and never the last channel. Its messages go with it. Broadcasts CHANNEL_DELETE.",
+        "operationId": "delete_channel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "Last channel of the server (channels.errors.lastChannel)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Channel not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Edit a channel",
+        "description": "Needs MANAGE_CHANNELS. Broadcasts CHANNEL_UPDATE.",
+        "operationId": "update_channel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateChannelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated channel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Channel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Channel not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/invites": {
+      "post": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "Create an invite link",
+        "operationId": "create_invite",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created invite",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invite"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Channel not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/messages": {
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "List channel messages",
+        "description": "Newest first. `around` returns a page centred on that message. `limit` is 1-100, default 50.",
+        "operationId": "get_messages",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "around",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Message"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Channel not found or not a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Send a message",
+        "description": "Content is 1-2000 characters. Broadcasts MESSAGE_CREATE. Needs SEND_MESSAGES. Honours the channel slowmode, unless you have MANAGE_MESSAGES or MANAGE_CHANNELS.",
+        "operationId": "create_message",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid content or reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Channel or referenced message not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/messages/{message_id}": {
+      "delete": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Delete a message",
+        "description": "Broadcasts MESSAGE_DELETE.",
+        "operationId": "delete_message",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "description": "Message id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Message not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Edit a message",
+        "description": "Author only. Broadcasts MESSAGE_UPDATE.",
+        "operationId": "update_message",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "description": "Message id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not the author",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Message not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/typing": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Signal that you are typing",
+        "description": "Broadcasts TYPING_START; the indicator expires after 10 seconds.",
+        "operationId": "typing_start",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/voice": {
+      "get": {
+        "tags": [
+          "Voice"
+        ],
+        "summary": "Who is in a voice channel",
+        "operationId": "get_voice_state",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Participants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceChannelState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a voice channel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Voice"
+        ],
+        "summary": "Change your voice state",
+        "description": "Deafening also mutes. Broadcasts VOICE_STATE_UPDATE.",
+        "operationId": "update_voice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Participants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceChannelState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not joined",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/voice/join": {
+      "post": {
+        "tags": [
+          "Voice"
+        ],
+        "summary": "Join a voice channel",
+        "description": "Moves you out of any channel you were in. Broadcasts VOICE_STATE_UPDATE. Then open `/voice/media`.",
+        "operationId": "join_voice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinVoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Participants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceChannelState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a voice channel or missing clientSessionId",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/voice/leave": {
+      "post": {
+        "tags": [
+          "Voice"
+        ],
+        "summary": "Leave a voice channel",
+        "operationId": "leave_voice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Channel id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaveVoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Participants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceChannelState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/dms": {
+      "get": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "List your DM conversations",
+        "description": "Most recently active first, at most 200.",
+        "operationId": "list_dms",
+        "responses": {
+          "200": {
+            "description": "Conversations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DmChannel"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "Open (or reuse) a 1:1 conversation",
+        "description": "Subject to the target's `dmPrivacy` and blocks. Broadcasts DM_CHANNEL_CREATE to the other person on creation.",
+        "operationId": "open_dm",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenDmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DmChannel"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Blocked or not allowed by their privacy setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/dms/groups": {
+      "post": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "Create a group conversation",
+        "description": "2-10 people including you.",
+        "operationId": "create_group",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DmChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Too few or too many members",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/dms/{id}/members": {
+      "post": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "Add people to a group",
+        "operationId": "add_members",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Conversation id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMembersRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DmChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a group or too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/dms/{id}/members/@me": {
+      "delete": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "Leave a group",
+        "operationId": "leave_group",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Conversation id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Left"
+          },
+          "400": {
+            "description": "Not a group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/dms/{id}/messages": {
+      "get": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "List DM messages",
+        "description": "Same paging as channel messages.",
+        "operationId": "get_messages",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Conversation id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "around",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Message"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Conversation not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "Send a DM",
+        "description": "6 messages per 5 seconds. Content is 1-2000 characters.",
+        "operationId": "create_message",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Conversation id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DmMessageCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Conversation not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/dms/{id}/messages/{message_id}": {
+      "delete": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "Delete a DM",
+        "operationId": "delete_message",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Conversation id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "description": "Message id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not the author",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Message not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "Edit a DM",
+        "operationId": "update_message",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Conversation id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "description": "Message id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DmMessageUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not the author",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Message not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/dms/{id}/typing": {
+      "post": {
+        "tags": [
+          "Direct messages"
+        ],
+        "summary": "Signal that you are typing",
+        "operationId": "typing",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Conversation id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/friends": {
+      "get": {
+        "tags": [
+          "Friends"
+        ],
+        "summary": "List friends, pending requests and blocks",
+        "description": "`kind` is FRIEND, INCOMING, OUTGOING or BLOCKED.",
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "Relationships",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Relationship"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/friends/blocks/{id}": {
+      "put": {
+        "tags": [
+          "Friends"
+        ],
+        "summary": "Block a user",
+        "description": "Also removes any friendship or request.",
+        "operationId": "block",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "User id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The block",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Relationship"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot block yourself",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Friends"
+        ],
+        "summary": "Unblock a user",
+        "operationId": "unblock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "User id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Unblocked"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/friends/requests": {
+      "post": {
+        "tags": [
+          "Friends"
+        ],
+        "summary": "Send a friend request",
+        "description": "By `userId`, or by `username` plus `tag`. Asking someone who already asked you accepts their request. 10 per minute.",
+        "operationId": "send_request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FriendRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The resulting relationship",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Relationship"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "You blocked them",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already friends or already pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/friends/{id}": {
+      "delete": {
+        "tags": [
+          "Friends"
+        ],
+        "summary": "Unfriend, decline or cancel a request",
+        "description": "Idempotent.",
+        "operationId": "remove",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Other user id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/friends/{id}/accept": {
+      "post": {
+        "tags": [
+          "Friends"
+        ],
+        "summary": "Accept an incoming request",
+        "operationId": "accept",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Requester user id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The new friendship",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Relationship"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds": {
+      "post": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Create a server",
+        "operationId": "create_guild",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created server with its first channel and owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateGuildResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Server limit reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}": {
+      "delete": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Delete a server",
+        "description": "Owner only. Removes its channels, messages and emoji for good. Broadcasts GUILD_DELETE.",
+        "operationId": "delete_guild",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Guild not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Edit a server",
+        "description": "Needs MANAGE_GUILD. Broadcasts GUILD_UPDATE.",
+        "operationId": "update_guild",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Guild"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Guild not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}/audit-log": {
+      "get": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Read the audit log",
+        "description": "Needs VIEW_AUDIT_LOG. Newest first; page back with `before`.",
+        "operationId": "list_audit_log",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "path",
+            "description": "Entries older than this entry id.",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "path",
+            "description": "1 to 100, default 50.",
+            "required": true,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "description": "Only this action, e.g. `role.update`.",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}/channels": {
+      "post": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Create a channel",
+        "description": "Needs MANAGE_CHANNELS. Broadcasts CHANNEL_CREATE.",
+        "operationId": "create_guild_channel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGuildChannelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created channel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Channel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Guild not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}/emojis": {
+      "post": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Add a custom emoji",
+        "description": "Needs MANAGE_EMOJIS. Multipart with a `name` field (2-32 letters, digits or underscores, unique in the server) and an image `file` (PNG, JPEG, GIF or WebP, up to 256 KB and 1024 px). At most 50 per server. Broadcasts GUILD_EMOJIS_UPDATE.",
+        "operationId": "create_emoji",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created emoji",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Emoji"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name or image (emoji.errors.*)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Guild not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}/emojis/{emoji_id}": {
+      "delete": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Delete a custom emoji",
+        "description": "Needs MANAGE_EMOJIS. Messages that used it show `:name:` instead. Broadcasts GUILD_EMOJIS_UPDATE.",
+        "operationId": "delete_emoji",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "emoji_id",
+            "in": "path",
+            "description": "Emoji id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Guilds"
+        ],
+        "summary": "Rename a custom emoji",
+        "description": "Needs MANAGE_EMOJIS. Broadcasts GUILD_EMOJIS_UPDATE.",
+        "operationId": "update_emoji",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "emoji_id",
+            "in": "path",
+            "description": "Emoji id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmojiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated emoji",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Emoji"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name (emoji.errors.*)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}/members/{user_id}": {
+      "delete": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Remove a member from the server",
+        "description": "Needs KICK_MEMBERS and a higher rank than the member. The owner cannot be removed. The member can rejoin with an invite. Broadcasts GUILD_MEMBER_REMOVE.",
+        "operationId": "kick_member",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Member user id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission or hierarchy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}/members/{user_id}/roles/{role_id}": {
+      "put": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Give a role to a member",
+        "description": "Needs MANAGE_ROLES and a higher rank than the role, and you must hold every permission it grants. Broadcasts GUILD_MEMBER_UPDATE.",
+        "operationId": "add_member_role",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Member user id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "description": "Role id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission or hierarchy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role or member not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Take a role from a member",
+        "description": "Needs MANAGE_ROLES and a higher rank than the role. Broadcasts GUILD_MEMBER_UPDATE.",
+        "operationId": "remove_member_role",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Member user id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "description": "Role id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission or hierarchy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role or member not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}/roles": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "List a server's roles",
+        "description": "Members only. Lowest rank first; `@everyone` (the role whose id is the guild id) leads.",
+        "operationId": "list_roles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Role"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Create a role",
+        "description": "Needs MANAGE_ROLES and a role of your own (or ownership). The new role ranks just above `@everyone`. At most 50 per server. You cannot grant permissions you do not hold. Broadcasts GUILD_ROLES_UPDATE.",
+        "operationId": "create_role",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (roles.errors.*)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission or hierarchy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}/roles/reorder": {
+      "post": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Reorder roles",
+        "description": "Needs MANAGE_ROLES. Send every role except `@everyone`, lowest first. Roles at or above your own rank must stay where they are. Broadcasts GUILD_ROLES_UPDATE.",
+        "operationId": "reorder_roles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderRolesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Roles in their new order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Role"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The list is not every role exactly once",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission or hierarchy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/guilds/{id}/roles/{role_id}": {
+      "delete": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Delete a role",
+        "description": "Needs MANAGE_ROLES and a higher rank than the role. Members lose it. Broadcasts GUILD_ROLES_UPDATE.",
+        "operationId": "delete_role",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "description": "Role id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission or hierarchy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Edit a role",
+        "description": "Needs MANAGE_ROLES and a higher rank than the role. `@everyone` can change only its permissions. You cannot grant permissions you do not hold. Broadcasts GUILD_ROLES_UPDATE.",
+        "operationId": "update_role",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "description": "Role id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (roles.errors.*)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing permission or hierarchy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/invites/{code}": {
+      "get": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "Look up an invite",
+        "operationId": "get_invite",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "Invite code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invite preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown invite",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "Join a server with an invite",
+        "description": "Broadcasts GUILD_MEMBER_ADD.",
+        "operationId": "use_invite",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "Invite code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Joined; the full guild",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteUseResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown invite",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/search/dms": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "Search your DMs",
+        "description": "Postgres full-text search. Filters: `from:` `in:` `mentions:` `has:link` `before:` `after:` `during:` (dates are YYYY-MM-DD). `limit` is at most 50, `offset` at most 5000.",
+        "operationId": "search_dms",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matches",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query (search.errors.*)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/search/guilds/{guild_id}": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "Search a server's messages",
+        "description": "Postgres full-text search. Filters: `from:` `in:` `mentions:` `has:link` `before:` `after:` `during:` (dates are YYYY-MM-DD). `limit` is at most 50, `offset` at most 5000.",
+        "operationId": "search_guild",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matches",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query (search.errors.*)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/unfurl": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Fetch a link preview",
+        "operationId": "link_preview",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing to preview (NO_PREVIEW)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/unfurl/image": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Proxy a preview image",
+        "operationId": "image",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The image bytes"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No image (NO_IMAGE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/users/@me": {
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Update your profile",
+        "description": "Broadcasts USER_UPDATE to your servers.",
+        "operationId": "update_user",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/users/@me/avatar": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Upload an avatar",
+        "operationId": "upload_avatar",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/users/@me/banner": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Upload a profile banner",
+        "operationId": "upload_banner",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/users/@me/cancel-deletion": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Cancel scheduled deletion",
+        "operationId": "cancel_deletion",
+        "responses": {
+          "204": {
+            "description": "Cancelled"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/users/@me/custom-status": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Set or clear your custom status",
+        "description": "Broadcasts USER_UPDATE. Sending neither `text` nor `emoji` clears it.",
+        "operationId": "set_custom_status",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Too long or invalid (status.errors.*)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/users/@me/guilds/{guild_id}": {
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Leave a server",
+        "description": "Broadcasts GUILD_MEMBER_REMOVE.",
+        "operationId": "leave_guild",
+        "parameters": [
+          {
+            "name": "guild_id",
+            "in": "path",
+            "description": "Guild id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Left"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Owners cannot leave",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Guild not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/users/@me/read-pings": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Tell your other sessions that pings were read",
+        "description": "Pings are kept by each client; this relays PINGS_READ to all your connected sessions so they clear the same pings.",
+        "operationId": "read_pings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadPingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Relayed"
+          },
+          "400": {
+            "description": "Too many channels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/users/@me/request-deletion": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Schedule account deletion",
+        "operationId": "request_deletion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestDeletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Scheduled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/users/@me/user-settings": {
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Update your settings",
+        "description": "At least one field is required. `dmPrivacy` is EVERYONE, SHARED_SERVERS or FRIENDS.",
+        "operationId": "update_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Saved"
+          },
+          "400": {
+            "description": "Invalid settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/voice/media": {
+      "get": {
+        "tags": [
+          "Voice"
+        ],
+        "summary": "Media WebSocket",
+        "description": "Upgrades to a WebSocket that carries binary audio and video packets plus small JSON control messages. `socket` is `audio` (default) or `video`.",
+        "operationId": "media_ws",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "clientSessionId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "socket",
+            "in": "query",
+            "description": "\"audio\" (default) or \"video\".",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "Switching protocols"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Account": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "emailVerified",
+          "locale"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "locale": {
+            "type": "string"
+          }
+        }
+      },
+      "AccountSettings": {
+        "type": "object",
+        "required": [
+          "theme"
+        ],
+        "properties": {
+          "theme": {
+            "type": "string"
+          },
+          "compactMode": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "compactShowAvatars": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "pendingDeletion": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "deleteAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AddMembersRequest": {
+        "type": "object",
+        "required": [
+          "userIds"
+        ],
+        "properties": {
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AdminInviteCode": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "createdBy",
+          "used"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "used": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "contentType",
+          "size",
+          "url"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "width": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Pixel size, set for images only."
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "url": {
+            "type": "string",
+            "description": "Public path of the file, e.g. `/cdn/attachments/<id>/<filename>`."
+          }
+        }
+      },
+      "AuditEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "actorId",
+          "action",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "string",
+            "description": "The member who made the change; their account may have been deleted since."
+          },
+          "actor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
+          },
+          "action": {
+            "type": "string",
+            "description": "Dotted name such as `channel.create`, `role.update` or `member.kick`."
+          },
+          "targetType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What it was about: `guild`, `channel`, `role`, `member`, `emoji`, `invite` or `message`."
+          },
+          "targetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Name at the time of the change."
+          },
+          "changes": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Changed fields as `{ field: [from, to] }`, or `{ field: [value] }` for one-sided notes."
+          },
+          "createdAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix milliseconds."
+          }
+        }
+      },
+      "AuditPage": {
+        "type": "object",
+        "required": [
+          "entries",
+          "has_more"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntry"
+            },
+            "description": "Newest first."
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "More entries exist before the last one."
+          }
+        }
+      },
+      "Channel": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "guildId",
+          "rateLimitPerUser",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "guildId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "rateLimitPerUser": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateGroupRequest": {
+        "type": "object",
+        "required": [
+          "userIds"
+        ],
+        "properties": {
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateGuildChannelRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "rate_limit_per_user": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateGuildRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "brief": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateGuildResponse": {
+        "type": "object",
+        "required": [
+          "guild",
+          "channels",
+          "users"
+        ],
+        "properties": {
+          "guild": {
+            "$ref": "#/components/schemas/Guild"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Channel"
+            }
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          }
+        }
+      },
+      "CreateRoleRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "`0xRRGGBB`; 0 or omitted for none."
+          },
+          "hoist": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "List members with this role in their own group."
+          },
+          "permissions": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Bitmask; omitted for none."
+          }
+        }
+      },
+      "CustomStatus": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emoji": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Unix milliseconds when it clears itself."
+          }
+        }
+      },
+      "CustomStatusRequest": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Up to 60 characters. Leave out both `text` and `emoji` to clear the status."
+          },
+          "emoji": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "One emoji, up to 8 characters and no spaces, or a custom one as `<:name:id>`."
+          },
+          "durationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Milliseconds until the status clears itself (1 minute to 7 days). Omit to keep it."
+          }
+        }
+      },
+      "DeletionResponse": {
+        "type": "object",
+        "required": [
+          "deleteAt"
+        ],
+        "properties": {
+          "deleteAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix milliseconds when the account will be deleted."
+          }
+        }
+      },
+      "DmChannel": {
+        "type": "object",
+        "required": [
+          "id",
+          "isGroup",
+          "ownerId",
+          "members",
+          "lastMessageAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isGroup": {
+            "type": "boolean"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          },
+          "lastMessageAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix milliseconds."
+          }
+        }
+      },
+      "DmMessageCreate": {
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "nonce": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "messageReference": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DmMessageReference"
+              }
+            ]
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ids from `POST /attachments`, at most 10. Lets `content` be empty."
+          }
+        }
+      },
+      "DmMessageReference": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "DmMessageUpdate": {
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "Emoji": {
+        "type": "object",
+        "description": "A custom emoji of a server. In message text it is written `<:name:id>`.",
+        "required": [
+          "id",
+          "guildId",
+          "name",
+          "animated",
+          "creatorId",
+          "url"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "guildId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "animated": {
+            "type": "boolean"
+          },
+          "creatorId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "Public path of the image, e.g. `/cdn/emojis/<id>.png`."
+          }
+        }
+      },
+      "ErrorBody": {
+        "type": "object",
+        "description": "Error body of most failures.",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable code such as `BAD_REQUEST`, `FORBIDDEN` or `dms.errors.blocked`."
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "FieldErrorBody": {
+        "type": "object",
+        "required": [
+          "code",
+          "path"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "description": "The offending request field."
+          }
+        }
+      },
+      "FriendRequestCreate": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tag": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Guild": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "ownerId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brief": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Channel"
+            }
+          },
+          "members": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/GuildMember"
+            }
+          },
+          "emojis": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Emoji"
+            }
+          },
+          "roles": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        }
+      },
+      "GuildMember": {
+        "type": "object",
+        "required": [
+          "id",
+          "guildId",
+          "userId",
+          "joinedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "guildId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "joinedAt": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1767225600000
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ids of the roles the member holds, besides `@everyone`."
+          }
+        }
+      },
+      "ImageUpload": {
+        "type": "object",
+        "description": "Multipart body with a single image.",
+        "required": [
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "binary",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "Invite": {
+        "type": "object",
+        "required": [
+          "id",
+          "guildId",
+          "code",
+          "uses",
+          "maxUses",
+          "channelId",
+          "vanity"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "guildId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "uses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "creatorId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "vanity": {
+            "type": "boolean"
+          }
+        }
+      },
+      "InviteChannel": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "InviteCreateRequest": {
+        "type": "object",
+        "properties": {
+          "max_uses": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "max_age": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "InviteGuild": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brief": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "InviteResponse": {
+        "type": "object",
+        "required": [
+          "type",
+          "code",
+          "guild",
+          "guildId",
+          "channel"
+        ],
+        "properties": {
+          "type": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string"
+          },
+          "inviter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
+          },
+          "guild": {
+            "$ref": "#/components/schemas/InviteGuild"
+          },
+          "guildId": {
+            "type": "string"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/InviteChannel"
+          }
+        }
+      },
+      "InviteUseResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "guild",
+          "users"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "guild": {
+            "$ref": "#/components/schemas/Guild"
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          }
+        }
+      },
+      "JoinVoiceRequest": {
+        "type": "object",
+        "properties": {
+          "quality": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VoiceQuality"
+              }
+            ]
+          },
+          "selfMute": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "selfDeaf": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "clientSessionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LeaveVoiceRequest": {
+        "type": "object",
+        "properties": {
+          "clientSessionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "required": [
+          "id",
+          "authorId",
+          "channelId",
+          "guildId",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "guildId": {
+            "type": "string"
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "updatedAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "type": {
+            "type": "string"
+          },
+          "nonce": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
+          },
+          "messageReference": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MessageReference"
+              }
+            ]
+          },
+          "referencedMessage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Message"
+              }
+            ]
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          }
+        }
+      },
+      "MessageCreateRequest": {
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "nonce": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message_reference": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MessageReferenceRequest"
+              }
+            ]
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ids from `POST /attachments`, at most 10. Lets `content` be empty."
+          }
+        }
+      },
+      "MessageReference": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channelId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "guildId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "MessageReferenceRequest": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "guild_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fail_if_not_exists": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MessageUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "OpenDmRequest": {
+        "type": "object",
+        "required": [
+          "userId"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "Preview": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "siteName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Absolute URL of the image on the original site; clients load it through our proxy."
+          }
+        }
+      },
+      "RateLimitBody": {
+        "type": "object",
+        "required": [
+          "message",
+          "retryAfter"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Error code such as `messages.errors.rateLimited`."
+          },
+          "retryAfter": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Milliseconds until the next attempt is allowed."
+          }
+        }
+      },
+      "ReadPingsRequest": {
+        "type": "object",
+        "properties": {
+          "channelIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Channels whose pings were read, at most 100. Omit to mark every ping read."
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "confirmPassword",
+          "username"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "confirmPassword": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "inviteCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Relationship": {
+        "type": "object",
+        "required": [
+          "user",
+          "kind",
+          "since"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RelationshipKind"
+          },
+          "since": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix milliseconds."
+          }
+        }
+      },
+      "RelationshipKind": {
+        "type": "string",
+        "enum": [
+          "FRIEND",
+          "INCOMING",
+          "OUTGOING",
+          "BLOCKED"
+        ]
+      },
+      "ReorderRolesRequest": {
+        "type": "object",
+        "required": [
+          "roleIds"
+        ],
+        "properties": {
+          "roleIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every role except `@everyone`, lowest rank first."
+          }
+        }
+      },
+      "RequestDeletionRequest": {
+        "type": "object",
+        "required": [
+          "password",
+          "deleteMessages"
+        ],
+        "properties": {
+          "password": {
+            "type": "string"
+          },
+          "deleteMessages": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Role": {
+        "type": "object",
+        "description": "A server role: a name and colour for members, and the permissions it grants. The role whose\nid equals the guild id is `@everyone`, held by every member.",
+        "required": [
+          "id",
+          "guildId",
+          "name",
+          "color",
+          "hoist",
+          "position",
+          "permissions"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "guildId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "integer",
+            "format": "int32",
+            "description": "`0xRRGGBB`, or 0 for no colour."
+          },
+          "hoist": {
+            "type": "boolean",
+            "description": "Members with this role are listed in their own group, ranked by role."
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Higher is more powerful; `@everyone` is 0."
+          },
+          "permissions": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Bitmask, see `docs/permissions.md`."
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "required": [
+          "total",
+          "messages"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total matches, not just this page."
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            }
+          }
+        }
+      },
+      "SessionResponse": {
+        "type": "object",
+        "required": [
+          "user",
+          "account",
+          "settings"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/AccountSettings"
+          }
+        }
+      },
+      "SuccessBody": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateChannelRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rateLimitPerUser": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Slowmode in seconds, 0 to 21600. Ignored for voice channels."
+          }
+        }
+      },
+      "UpdateEmojiRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateGuildRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "brief": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`null` clears the description."
+          }
+        }
+      },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "color": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "hoist": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "permissions": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "theme": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "compactMode": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "compactShowAvatars": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "dmPrivacy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tag": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "avatar": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "banner": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateVoiceRequest": {
+        "type": "object",
+        "properties": {
+          "clientSessionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quality": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VoiceQuality"
+              }
+            ]
+          },
+          "selfMute": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "selfDeaf": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "screenSharing": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "camera": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "tag",
+          "createdAt",
+          "bot",
+          "flags",
+          "badges"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1767225600000
+          },
+          "bot": {
+            "type": "boolean"
+          },
+          "flags": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "avatar": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "banner": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customStatus": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CustomStatus",
+                "description": "Always present so clearing it reaches clients that merge updates."
+              }
+            ]
+          },
+          "badges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Badge ids shown on the profile, e.g. `staff` or `early_adopter`."
+          }
+        }
+      },
+      "ValidationErrorBody": {
+        "type": "object",
+        "required": [
+          "code",
+          "errors"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Always `VALIDATION_FAILED`."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorBody"
+            }
+          }
+        }
+      },
+      "VoiceAudioFormat": {
+        "type": "object",
+        "required": [
+          "sampleRate",
+          "bitDepth",
+          "channels",
+          "estimatedBitrateBps"
+        ],
+        "properties": {
+          "sampleRate": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "bitDepth": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "channels": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "estimatedBitrateBps": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "VoiceChannelState": {
+        "type": "object",
+        "required": [
+          "guildId",
+          "channelId",
+          "participants"
+        ],
+        "properties": {
+          "guildId": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoiceParticipant"
+            }
+          }
+        }
+      },
+      "VoiceParticipant": {
+        "type": "object",
+        "required": [
+          "userId",
+          "guildId",
+          "channelId",
+          "clientSessionId",
+          "ssrc",
+          "quality",
+          "audioFormat",
+          "selfMute",
+          "selfDeaf",
+          "screenSharing",
+          "camera",
+          "joinedAt"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "guildId": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "clientSessionId": {
+            "type": "string"
+          },
+          "ssrc": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "quality": {
+            "$ref": "#/components/schemas/VoiceQuality"
+          },
+          "audioFormat": {
+            "$ref": "#/components/schemas/VoiceAudioFormat"
+          },
+          "selfMute": {
+            "type": "boolean"
+          },
+          "selfDeaf": {
+            "type": "boolean"
+          },
+          "screenSharing": {
+            "type": "boolean"
+          },
+          "camera": {
+            "type": "boolean"
+          },
+          "joinedAt": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "VoiceQuality": {
+        "type": "string",
+        "enum": [
+          "AUTO",
+          "VOICE_LOSSLESS",
+          "STUDIO_LOSSLESS",
+          "MUSIC_LOSSLESS"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "token",
+        "description": "Session token. Named `__Host-Token` when the server runs in production."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Users"
+    },
+    {
+      "name": "Guilds"
+    },
+    {
+      "name": "Roles"
+    },
+    {
+      "name": "Messages"
+    },
+    {
+      "name": "Invites"
+    },
+    {
+      "name": "Direct messages"
+    },
+    {
+      "name": "Friends"
+    },
+    {
+      "name": "Search"
+    },
+    {
+      "name": "Voice"
+    },
+    {
+      "name": "Media"
+    },
+    {
+      "name": "Attachments"
+    },
+    {
+      "name": "Admin"
+    }
+  ]
+}

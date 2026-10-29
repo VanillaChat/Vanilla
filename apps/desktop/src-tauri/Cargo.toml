@@ -1,0 +1,31 @@
+[package]
+name = "vanilla-desktop"
+version = "0.1.0"
+edition = "2024"
+description = "Vanilla desktop client"
+
+# Standalone: keeps tauri and its system libraries out of the backend workspace.
+[workspace]
+
+[lib]
+name = "vanilla_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+serde_json = "1"
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+discord-rich-presence = "1.1"
+serde_json = "1"
+
+# The updater only exists on desktop; its `Update` also drives the manual install step.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-single-instance = "2"
+
+# Answers WebKitGTK's microphone permission prompt; the version follows the one tauri uses.
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2.0"

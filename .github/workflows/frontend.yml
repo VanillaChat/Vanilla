@@ -1,0 +1,33 @@
+name: Frontend
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/frontend/**", "crates/voice/**", "Cargo.lock", ".github/workflows/frontend.yml"]
+  pull_request:
+    paths: ["apps/frontend/**", "crates/voice/**", "Cargo.lock", ".github/workflows/frontend.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      # the CLI must match the wasm-bindgen version pinned in Cargo.lock
+      - name: Install wasm-bindgen CLI
+        working-directory: .
+        run: |
+          version=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"/\1/p')
+          cargo install wasm-bindgen-cli --version "$version" --locked
+
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run build

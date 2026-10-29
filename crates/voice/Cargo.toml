@@ -1,0 +1,14 @@
+[package]
+name = "vanilla-voice"
+version = "0.1.0"
+edition = "2024"
+description = "Lossless low-latency voice codec and packet format shared by the Vanilla backend and web client (WASM)."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = { version = "0.2", optional = true }
+
+[features]
+wasm = ["dep:wasm-bindgen"]
