@@ -19,4 +19,6 @@ jobs:
         with:
           components: rustfmt
 
+      - uses: ./.github/actions/byteorm
+
       - run: cargo fmt --all -- --check

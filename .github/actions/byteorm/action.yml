@@ -1,0 +1,19 @@
+name: ByteORM client
+description: Installs the ByteORM CLI and generates the client crate the backend depends on (it is not committed).
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v4
+      id: cli
+      with:
+        path: ~/.cargo/bin/byteorm
+        key: byteorm-cli-85a51b04
+
+    - if: steps.cli.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo install --git https://github.com/bytematebot/byteorm --rev 85a51b04 byteorm --locked
+
+    - shell: bash
+      working-directory: apps/backend
+      run: byteorm generate

@@ -21,12 +21,34 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      # cargo loads the whole workspace, which includes the backend and its generated client
+      - uses: ./.github/actions/byteorm
+
+      - uses: swatinem/rust-cache@v2
+
       # the CLI must match the wasm-bindgen version pinned in Cargo.lock
-      - name: Install wasm-bindgen CLI
+      - name: Find the wasm-bindgen version
+        id: wasm-bindgen
         working-directory: .
         run: |
           version=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"/\1/p')
-          cargo install wasm-bindgen-cli --version "$version" --locked
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        id: wasm-bindgen-cli
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-cli-${{ steps.wasm-bindgen.outputs.version }}
+
+      - name: Install wasm-bindgen CLI
+        if: steps.wasm-bindgen-cli.outputs.cache-hit != 'true'
+        working-directory: .
+        run: cargo install wasm-bindgen-cli --version "${{ steps.wasm-bindgen.outputs.version }}" --locked
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('apps/frontend/bun.lock') }}
 
       - run: bun install --frozen-lockfile
       - run: bun run check

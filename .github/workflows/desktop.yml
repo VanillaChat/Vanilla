@@ -38,6 +38,11 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
 
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('apps/desktop/bun.lock') }}
+
       - run: bun install
         working-directory: apps/desktop
 
