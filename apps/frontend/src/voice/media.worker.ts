@@ -44,14 +44,15 @@ function prepareVideoBackend() {
 	// initialized the caps types. Every subsequent video support query then
 	// returns false. An audio support query initializes GStreamer first, even
 	// when voice uses our lossless codec and never creates an Opus encoder.
-	return (videoBackendReady ??= HAS_OPUS
+	videoBackendReady ??= HAS_OPUS
 		? AudioEncoder.isConfigSupported({
 				codec: 'opus',
 				sampleRate: 48_000,
 				numberOfChannels: 2,
 				bitrate: 96_000,
 			}).catch(() => undefined)
-		: Promise.resolve());
+		: Promise.resolve();
+	return videoBackendReady;
 }
 
 const AUDIO_SEND_CAP = 48 * 1024;

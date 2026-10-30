@@ -725,7 +725,9 @@ export async function startScreenShare() {
 			},
 		});
 		if (rt !== runtime || screenStream()) {
-			stream.getTracks().forEach((track) => track.stop());
+			stream.getTracks().forEach((track) => {
+				track.stop();
+			});
 			return;
 		}
 		const track = stream.getVideoTracks()[0];
