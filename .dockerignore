@@ -1,0 +1,15 @@
+.git
+**/node_modules
+**/target
+**/dist
+**/.env
+**/.env.*
+**/*.log
+.idea
+.vscode
+apps/desktop
+apps/backend/generated
+apps/frontend/src/voice/wasm
+apps/backend/cdn/*
+!apps/backend/cdn/embed
+!apps/backend/cdn/embed/**

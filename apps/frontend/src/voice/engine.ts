@@ -694,41 +694,40 @@ async function attachScreenAudio(stream: MediaStream) {
 	runtime.screenAudio = { node, source };
 }
 
-function measureRefreshRate(): Promise<number> {
-	return new Promise((resolve) => {
-		let first = 0;
-		let frames = 0;
-		const step = (t: number) => {
-			if (!first) first = t;
-			else frames++;
-			if (t - first >= 400 && frames > 2) {
-				const hz = (frames * 1000) / (t - first);
-				const common = [60, 75, 90, 100, 120, 144, 165, 180, 240, 360];
-				const near = common.find((c) => Math.abs(c - hz) / c < 0.04);
-				resolve(Math.min(360, Math.max(30, Math.round(near ?? hz))));
-			} else requestAnimationFrame(step);
-		};
-		requestAnimationFrame(step);
-	});
-}
-
 export async function startScreenShare() {
 	if (!rt || screenStream()) return;
+	const runtime = rt;
 	const preset = SCREEN_PRESETS[voiceSettings().screenPreset];
-	const wantFps = preset.fps || (await measureRefreshRate());
 	try {
+		if (typeof navigator.mediaDevices?.getDisplayMedia !== 'function') {
+			setError(
+				'Screen sharing is not supported by this desktop webview. Try the web client in a browser with screen capture support.',
+			);
+			return;
+		}
+		// WebKit requires capture to start inside the click handler. Measuring the
+		// monitor first crosses animation frames and loses the user gesture.
 		const stream = await navigator.mediaDevices.getDisplayMedia({
-			video: {
-				width: { ideal: preset.width },
-				height: { ideal: preset.height },
-				frameRate: preset.fps ? { ideal: wantFps, max: wantFps } : { ideal: wantFps },
-			},
+			// Native quality must leave sizing to the selected source. Asking for
+			// the placeholder 8K dimensions makes WebKit negotiate a capture preset
+			// even when the PipeWire source has no matching preset.
+			video: preset.fps
+				? {
+						width: { ideal: preset.width },
+						height: { ideal: preset.height },
+						frameRate: { ideal: preset.fps, max: preset.fps },
+					}
+				: true,
 			audio: {
 				echoCancellation: false,
 				noiseSuppression: false,
 				autoGainControl: false,
 			},
 		});
+		if (rt !== runtime || screenStream()) {
+			stream.getTracks().forEach((track) => track.stop());
+			return;
+		}
 		const track = stream.getVideoTracks()[0];
 		const settings = track.getSettings();
 		track.addEventListener('ended', () => stopVideo('screen'));
@@ -739,7 +738,7 @@ export async function startScreenShare() {
 		await attachScreenAudio(stream);
 		const width = settings.width ?? preset.width;
 		const height = settings.height ?? preset.height;
-		const fps = Math.round(settings.frameRate ?? wantFps);
+		const fps = Math.round(settings.frameRate ?? (preset.fps || 60));
 		send({
 			type: 'video-start',
 			kind: 'screen',
@@ -750,9 +749,11 @@ export async function startScreenShare() {
 		});
 		if (rt) rt.videoPumps.screen = pumpFrames(track, 'screen');
 	} catch (err) {
-		if (!(err instanceof DOMException && err.name === 'NotAllowedError')) {
-			setError(describeError(err));
-		}
+		setError(
+			err instanceof DOMException && err.name === 'NotAllowedError'
+				? 'Screen sharing was cancelled or blocked. Check screen recording permissions and try again.'
+				: describeError(err),
+		);
 	}
 }
 

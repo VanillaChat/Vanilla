@@ -37,6 +37,23 @@ const now = () => performance.now();
 const HAS_OPUS = typeof AudioEncoder !== 'undefined' && typeof AudioDecoder !== 'undefined';
 const HAS_VIDEO = typeof VideoEncoder !== 'undefined' && typeof VideoDecoder !== 'undefined';
 
+let videoBackendReady: Promise<unknown> | undefined;
+
+function prepareVideoBackend() {
+	// WebKitGTK 2.52 can register its video encoder before GStreamer has
+	// initialized the caps types. Every subsequent video support query then
+	// returns false. An audio support query initializes GStreamer first, even
+	// when voice uses our lossless codec and never creates an Opus encoder.
+	return (videoBackendReady ??= HAS_OPUS
+		? AudioEncoder.isConfigSupported({
+				codec: 'opus',
+				sampleRate: 48_000,
+				numberOfChannels: 2,
+				bitrate: 96_000,
+			}).catch(() => undefined)
+		: Promise.resolve());
+}
+
 const AUDIO_SEND_CAP = 48 * 1024;
 const VIDEO_SEND_CAP = 1024 * 1024;
 const VIDEO_FRAGMENT = 16_000;
@@ -582,6 +599,7 @@ class VideoSender {
 	}
 
 	async start(width: number, height: number, fps: number, bitrate: number) {
+		await prepareVideoBackend();
 		this.stop();
 		this.fps = fps;
 		this.bitrate = bitrate;

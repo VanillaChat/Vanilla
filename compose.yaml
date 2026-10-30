@@ -1,0 +1,106 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vanilla
+      POSTGRES_USER: vanilla
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vanilla -d vanilla"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  migrate:
+    build:
+      context: .
+      target: migrate
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://vanilla:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/vanilla
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+  backend:
+    build:
+      context: .
+      target: backend
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgresql://vanilla:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/vanilla
+      REDIS_URL: redis://valkey:6379
+      TOKEN_SECRET: ${TOKEN_SECRET:?Set TOKEN_SECRET in .env}
+      PUBLIC_URL: https://${DOMAIN:?Set DOMAIN in .env}
+      CORS_ALLOWED_ORIGINS: https://${DOMAIN:?Set DOMAIN in .env}
+      REGISTRATION_CLOSED: ${REGISTRATION_CLOSED:-1}
+      LINK_PREVIEWS: ${LINK_PREVIEWS:-0}
+      MAX_AVATAR_SIZE: ${MAX_AVATAR_SIZE:-10000000}
+      MAX_BANNER_SIZE: ${MAX_BANNER_SIZE:-25000000}
+      MAX_ATTACHMENT_SIZE: ${MAX_ATTACHMENT_SIZE:-25000000}
+      USER_GUILD_LIMIT: ${USER_GUILD_LIMIT:-100}
+      RUST_LOG: ${RUST_LOG:-vanilla_backend=info,tower_http=info}
+    volumes:
+      - uploads:/app/cdn
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    logging: *logging
+
+  frontend:
+    build:
+      context: .
+      target: frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      - traefik.docker.network=dokploy-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  postgres_data:
+  valkey_data:
+  uploads:
+
+networks:
+  default:
+  dokploy-network:
+    external: true
